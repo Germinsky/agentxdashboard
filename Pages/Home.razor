@@ -1,0 +1,330 @@
+﻿@page "/"
+@inject CoinGeckoService CoinGecko
+@implements IDisposable
+
+<PageTitle>AgentX Velocity</PageTitle>
+
+<div class="dashboard">
+	<header class="dash-header">
+		<div class="brand">
+			<span class="brand-mark"></span>
+			<div>
+				<div class="brand-title">AgentX Velocity</div>
+				<div class="brand-sub">High-frequency crypto overview</div>
+			</div>
+		</div>
+		<div class="status">
+			<span class="pulse"></span>
+			<span class="status-text">@StatusText</span>
+			<span class="status-time">Updated @LastUpdatedText</span>
+		</div>
+	</header>
+
+	<section class="ticker" aria-label="Live ticker">
+		<div class="ticker-track">
+			@foreach (var coin in Markets)
+			{
+				<div class="ticker-item">
+					<span class="ticker-symbol">@coin.Symbol.ToUpperInvariant()</span>
+					<span class="ticker-price">@FormatCurrency(coin.CurrentPrice)</span>
+					<span class="ticker-change @ChangeClass(coin.Change24h)">@FormatPercent(coin.Change24h)</span>
+				</div>
+			}
+			@foreach (var coin in Markets)
+			{
+				<div class="ticker-item">
+					<span class="ticker-symbol">@coin.Symbol.ToUpperInvariant()</span>
+					<span class="ticker-price">@FormatCurrency(coin.CurrentPrice)</span>
+					<span class="ticker-change @ChangeClass(coin.Change24h)">@FormatPercent(coin.Change24h)</span>
+				</div>
+			}
+		</div>
+	</section>
+
+	<section class="grid">
+		<div class="panel hero">
+			<div class="panel-header">
+				<div>
+					<div class="panel-title">Market Velocity</div>
+					<div class="panel-sub">Momentum index and flow metrics</div>
+				</div>
+				<div class="chip">@VelocityIndexLabel</div>
+			</div>
+			<div class="hero-metrics">
+				<div class="metric">
+					<span class="metric-label">Velocity Index</span>
+					<span class="metric-value">@VelocityIndexValue</span>
+					<span class="metric-note">Avg 1h move</span>
+				</div>
+				<div class="metric">
+					<span class="metric-label">Leader</span>
+					<span class="metric-value">@LeaderName</span>
+					<span class="metric-note">Market cap rank @LeaderRank</span>
+				</div>
+				<div class="metric">
+					<span class="metric-label">24h Volume</span>
+					<span class="metric-value">@TotalVolumeLabel</span>
+					<span class="metric-note">Top 12 assets</span>
+				</div>
+			</div>
+			<div class="hero-spark">
+				<div class="sparkline">
+					@foreach (var segment in SparklineSegments)
+					{
+						<span style="height:@segment%"></span>
+					}
+				</div>
+				<div class="spark-legend">Pulse trace</div>
+			</div>
+		</div>
+
+		<div class="panel">
+			<div class="panel-header">
+				<div>
+					<div class="panel-title">Momentum Movers</div>
+					<div class="panel-sub">Fastest 1h shift</div>
+				</div>
+				<div class="chip ghost">@MoversLabel</div>
+			</div>
+			<div class="movers">
+				@foreach (var mover in Movers)
+				{
+					<div class="mover">
+						<div class="mover-head">
+							<span class="mover-name">@mover.Name</span>
+							<span class="mover-symbol">@mover.Symbol.ToUpperInvariant()</span>
+						</div>
+						<div class="mover-body">
+							<span class="mover-price">@FormatCurrency(mover.CurrentPrice)</span>
+							<span class="mover-change @ChangeClass(mover.Change1h)">@FormatPercent(mover.Change1h)</span>
+						</div>
+						<div class="mover-bar">
+							<span style="width:@MoverWidth(mover.Change1h)%"></span>
+						</div>
+					</div>
+				}
+			</div>
+		</div>
+
+		<div class="panel">
+			<div class="panel-header">
+				<div>
+					<div class="panel-title">Signal Watch</div>
+					<div class="panel-sub">Curated high-liquid names</div>
+				</div>
+				<div class="chip ghost">@WatchlistLabel</div>
+			</div>
+			<div class="watchlist">
+				@foreach (var item in Watchlist)
+				{
+					<div class="watch-item">
+						<div>
+							<div class="watch-name">@item.Name</div>
+							<div class="watch-meta">@item.Symbol.ToUpperInvariant() • Rank @item.MarketCapRank</div>
+						</div>
+						<div class="watch-numbers">
+							<span class="watch-price">@FormatCurrency(item.CurrentPrice)</span>
+							<span class="watch-change @ChangeClass(item.Change24h)">@FormatPercent(item.Change24h)</span>
+						</div>
+					</div>
+				}
+			</div>
+		</div>
+
+		<div class="panel table-panel">
+			<div class="panel-header">
+				<div>
+					<div class="panel-title">Market Depth</div>
+					<div class="panel-sub">Top caps with 24h range</div>
+				</div>
+				<div class="chip">@Markets.Count assets</div>
+			</div>
+			<div class="table">
+				<div class="table-row table-head">
+					<span>Asset</span>
+					<span>Price</span>
+					<span>24h</span>
+					<span>7d</span>
+					<span>Vol</span>
+					<span>Range</span>
+				</div>
+				@foreach (var coin in Markets)
+				{
+					<div class="table-row">
+						<span class="cell-name">
+							<span class="rank">#@coin.MarketCapRank</span>
+							<span class="name">@coin.Name</span>
+							<span class="symbol">@coin.Symbol.ToUpperInvariant()</span>
+						</span>
+						<span>@FormatCurrency(coin.CurrentPrice)</span>
+						<span class="@ChangeClass(coin.Change24h)">@FormatPercent(coin.Change24h)</span>
+						<span class="@ChangeClass(coin.Change7d)">@FormatPercent(coin.Change7d)</span>
+						<span>@FormatCompact(coin.TotalVolume)</span>
+						<span class="range">
+							<span>@FormatCurrency(coin.Low24h)</span>
+							<span>@FormatCurrency(coin.High24h)</span>
+						</span>
+					</div>
+				}
+			</div>
+			@if (!string.IsNullOrWhiteSpace(ErrorMessage))
+			{
+				<div class="panel-warning">@ErrorMessage</div>
+			}
+		</div>
+	</section>
+</div>
+
+@code {
+	private readonly CancellationTokenSource _cts = new();
+	private PeriodicTimer? _timer;
+	private bool _loading = true;
+	private string? _errorMessage;
+	private DateTimeOffset? _lastUpdated;
+	private List<CoinMarket> _markets = new();
+
+	private static readonly string[] WatchlistIds =
+	[
+		"bitcoin",
+		"ethereum",
+		"solana",
+		"dogecoin",
+		"avalanche-2"
+	];
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadAsync();
+		_timer = new PeriodicTimer(TimeSpan.FromSeconds(12));
+		_ = PollAsync();
+	}
+
+	private async Task PollAsync()
+	{
+		if (_timer is null)
+		{
+			return;
+		}
+
+		try
+		{
+			while (await _timer.WaitForNextTickAsync(_cts.Token))
+			{
+				await LoadAsync();
+			}
+		}
+		catch (OperationCanceledException)
+		{
+		}
+	}
+
+	private async Task LoadAsync()
+	{
+		try
+		{
+			_loading = true;
+			_errorMessage = null;
+			var data = await CoinGecko.GetMarketsAsync(_cts.Token);
+			_markets = data.ToList();
+			_lastUpdated = DateTimeOffset.Now;
+		}
+		catch (OperationCanceledException)
+		{
+		}
+		catch
+		{
+			_errorMessage = "Live feed paused. Retrying.";
+		}
+		finally
+		{
+			_loading = false;
+			await InvokeAsync(StateHasChanged);
+		}
+	}
+
+	public void Dispose()
+	{
+		_cts.Cancel();
+		_timer?.Dispose();
+		_cts.Dispose();
+	}
+
+	private IReadOnlyList<CoinMarket> Markets => _markets;
+
+	private string StatusText => !string.IsNullOrWhiteSpace(_errorMessage)
+		? _errorMessage
+		: _loading
+			? "Syncing"
+			: "Live feed";
+
+	private string LastUpdatedText => _lastUpdated.HasValue
+		? _lastUpdated.Value.ToLocalTime().ToString("HH:mm:ss")
+		: "--:--:--";
+
+	private string ErrorMessage => _errorMessage ?? string.Empty;
+
+	private CoinMarket? Leader => _markets.OrderBy(market => market.MarketCapRank).FirstOrDefault();
+
+	private string LeaderName => Leader?.Name ?? "--";
+
+	private string LeaderRank => Leader?.MarketCapRank.ToString() ?? "--";
+
+	private decimal VelocityIndex => _markets.Count == 0
+		? 0m
+		: _markets.Average(market => market.Change1h ?? 0m);
+
+	private string VelocityIndexValue => $"{VelocityIndex:0.00}%";
+
+	private string VelocityIndexLabel => VelocityIndex >= 0m ? "Updraft" : "Downdraft";
+
+	private string TotalVolumeLabel => FormatCompact(_markets.Sum(market => market.TotalVolume));
+
+	private IEnumerable<CoinMarket> Movers => _markets
+		.OrderByDescending(market => market.Change1h ?? 0m)
+		.Take(4);
+
+	private string MoversLabel => _markets.Count == 0 ? "--" : "Top 4";
+
+	private IEnumerable<CoinMarket> Watchlist => _markets
+		.Where(market => WatchlistIds.Contains(market.Id))
+		.OrderBy(market => market.MarketCapRank)
+		.ToList();
+
+	private string WatchlistLabel => Watchlist.Any() ? $"{Watchlist.Count()} tracked" : "Standby";
+
+	private IEnumerable<int> SparklineSegments => new[] { 36, 42, 28, 60, 48, 72, 40, 58, 34, 66, 44, 62 };
+
+	private static string FormatCurrency(decimal value) => $"${value:N2}";
+
+	private static string FormatPercent(decimal? value) => value.HasValue ? $"{value.Value:0.00}%" : "--";
+
+	private static string ChangeClass(decimal? value) => value.HasValue && value.Value < 0 ? "neg" : "pos";
+
+	private static string FormatCompact(decimal value)
+	{
+		var abs = Math.Abs(value);
+
+		if (abs >= 1_000_000_000m)
+		{
+			return $"{value / 1_000_000_000m:0.##}B";
+		}
+
+		if (abs >= 1_000_000m)
+		{
+			return $"{value / 1_000_000m:0.##}M";
+		}
+
+		if (abs >= 1_000m)
+		{
+			return $"{value / 1_000m:0.##}K";
+		}
+
+		return $"{value:0}";
+	}
+
+	private static string MoverWidth(decimal? change)
+	{
+		var normalized = Math.Clamp(change ?? 0m, -8m, 8m);
+		return ((normalized + 8m) / 16m * 100m).ToString("0.0");
+	}
+}
